@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#11221f">
+    <title>Escáner de compis · Pokémon Masters EX</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">HERRAMIENTA LOCAL</p>
+          <h1>Escáner de compis</h1>
+          <p class="intro">Recorta una captura de tu lista, revisa cada unidad y exporta los datos a CSV para abrirlos en Excel.</p>
+        </div>
+        <span class="privacy-badge"><span aria-hidden="true">●</span> La imagen no sale de este navegador</span>
+      </header>
+
+      <section class="panel upload-panel" aria-labelledby="upload-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">PASO 1</p>
+            <h2 id="upload-heading">Carga una captura</h2>
+          </div>
+          <label class="upload-button" for="image-file">Elegir imagen</label>
+          <input id="image-file" type="file" accept="image/*">
+        </div>
+        <p class="help-text">La imagen se procesa en tu dispositivo. Para empezar, usa una captura de la lista de compis; también puedes cargar un recorte individual y poner la cuadrícula a 1 × 1.</p>
+        <p id="image-name" class="file-name" aria-live="polite">Ninguna imagen seleccionada</p>
+
+        <div id="image-workspace" class="image-workspace" hidden>
+          <div class="crop-controls" aria-label="Ajustes de recorte">
+            <label>Columnas<input id="columns" type="number" min="1" max="20" value="4"></label>
+            <label>Filas<input id="rows" type="number" min="1" max="50" value="7"></label>
+            <label>Inicio X (%)<input id="crop-x" type="number" min="0" max="99" step="0.5" value="7.5"></label>
+            <label>Inicio Y (%)<input id="crop-y" type="number" min="0" max="99" step="0.5" value="13.4"></label>
+            <label>Ancho (%)<input id="crop-width" type="number" min="1" max="100" step="0.5" value="86"></label>
+            <label>Alto (%)<input id="crop-height" type="number" min="1" max="100" step="0.5" value="68.4"></label>
+          </div>
+          <p class="help-text crop-hint">Ajusta la cuadrícula para que los recuadros enmarquen las tarjetas. Las capturas pueden tener márgenes o escalas diferentes.</p>
+          <div class="image-preview-wrap">
+            <div id="image-preview" class="image-preview">
+              <img id="source-image" alt="Captura cargada, con la cuadrícula de recorte">
+              <div id="crop-overlay" class="crop-overlay" aria-hidden="true"></div>
+            </div>
+          </div>
+          <p id="crop-status" class="status-line" aria-live="polite"></p>
+        </div>
+        <p id="app-error" class="error-message" role="alert" hidden></p>
+      </section>
+
+      <section class="panel review-panel" aria-labelledby="review-heading">
+        <div class="section-heading review-heading">
+          <div>
+            <p class="step-label">PASOS 2 Y 3</p>
+            <h2 id="review-heading">Revisa cada tarjeta</h2>
+          </div>
+          <div class="review-actions">
+            <button id="export-button" class="primary-button" type="button" disabled>Exportar CSV</button>
+          </div>
+        </div>
+
+        <div class="panel sync-panel">
+          <h3>Sincronizar con Google Sheets</h3>
+          <p class="help-text">Cuando hayas revisado las parejas detectadas, selecciona tu nombre y envía los datos a tu hoja.</p>
+          <div class="sync-controls">
+            <label for="sync-player">Jugador</label>
+
+            <select id="sync-player">
+              <option value="">Selecciona un jugador...</option>
+            </select>
+
+            <button
+              id="reload-players-button"
+              class="secondary-button"
+              type="button"
+              title="Volver a cargar la lista de jugadores desde Google Sheets"
+            >
+              ↻ Recargar jugadores
+            </button>
+
+            <button
+              id="sync-button"
+              class="primary-button"
+              type="button"
+              disabled
+            >
+              Sincronizar con Google Sheets
+            </button>
+          </div>
+          <p id="sync-status" class="status-line" aria-live="polite"></p>
+        </div>
+        <div class="review-note">
+          <strong>La revisión es intencional:</strong> el catálogo propone personajes por parecido visual, pero las propuestas no son confirmaciones. Verifica cada imagen, las copias (insignia hexagonal: 1–5; dentada Excelsior: 6–10), la estrella 6EX, el subrol (se busca MAX; si no se detecta, se marca Sin desbloquear), los tipos de movimiento detectados a la derecha y el rol bajo las estrellas. Las copias se registran aparte y no afectan al filtraje ni al orden de los candidatos. Las coincidencias de tipo y rol ayudan a priorizarlos; los tipos no coincidentes no se penalizan, porque sus etiquetas pueden estar incompletas.
+        </div>
+        <div class="catalog-actions">
+          <button id="recognize-button" type="button" disabled>Analizar tarjetas y rellenar propuestas</button>
+          <button id="suggestions-export-button" type="button" disabled>Exportar CSV de propuestas</button>
+        </div>
+        <p id="catalog-status" class="status-line" aria-live="polite"></p>
+        <p id="analysis-status" class="status-line" aria-live="polite"></p>
+        <p id="review-count" class="review-count" aria-live="polite">Carga una captura para empezar.</p>
+        <div id="cards-list" class="cards-list"></div>
+      </section>
+
+      <footer>
+        La comparación y el OCR se ejecutan en este navegador; la captura no se envía. El OCR carga Tesseract.js y el modelo de inglés desde Internet al pulsar detectar. El catálogo de <a href="https://pomasters.github.io/SyncPairsTracker/" target="_blank" rel="noreferrer">Sync Pairs Tracker</a> se consulta al comparar. El CSV usa punto y coma para Excel.
+      </footer>
+    </main>
+  </body>
+</html>
