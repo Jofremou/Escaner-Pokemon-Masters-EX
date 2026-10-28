@@ -28,7 +28,7 @@
           <label class="upload-button" for="image-file">Elegir imagen</label>
           <input id="image-file" type="file" accept="image/*">
         </div>
-        <p class="help-text">La imagen se procesa en tu dispositivo. Para empezar, usa una captura de la lista de compis; también puedes cargar un recorte individual y poner la cuadrícula a 1 × 1.</p>
+        <p class="help-text">IMPORTANTE: La captura tiene que ser de la pestaña "Función EX" dentro del juego. </p>
         <p id="image-name" class="file-name" aria-live="polite">Ninguna imagen seleccionada</p>
 
         <div id="image-workspace" class="image-workspace" hidden>
@@ -40,7 +40,7 @@
             <label>Ancho (%)<input id="crop-width" type="number" min="1" max="100" step="0.5" value="86"></label>
             <label>Alto (%)<input id="crop-height" type="number" min="1" max="100" step="0.5" value="68.4"></label>
           </div>
-          <p class="help-text crop-hint">Ajusta la cuadrícula para que los recuadros enmarquen las tarjetas. Las capturas pueden tener márgenes o escalas diferentes.</p>
+          <p class="help-text crop-hint">Podéis ajustar la cuadrícula, si no detecta tipos, roles o ex recomiendo que la ajustéis un poco.</p>
           <div class="image-preview-wrap">
             <div id="image-preview" class="image-preview">
               <img id="source-image" alt="Captura cargada, con la cuadrícula de recorte">
@@ -94,7 +94,7 @@
           <p id="sync-status" class="status-line" aria-live="polite"></p>
         </div>
         <div class="review-note">
-          <strong>La revisión es intencional:</strong> el catálogo propone personajes por parecido visual, pero las propuestas no son confirmaciones. Verifica cada imagen, las copias (insignia hexagonal: 1–5; dentada Excelsior: 6–10), la estrella 6EX, el subrol (se busca MAX; si no se detecta, se marca Sin desbloquear), los tipos de movimiento detectados a la derecha y el rol bajo las estrellas. Las copias se registran aparte y no afectan al filtraje ni al orden de los candidatos. Las coincidencias de tipo y rol ayudan a priorizarlos; los tipos no coincidentes no se penalizan, porque sus etiquetas pueden estar incompletas.
+          <strong>Revisad todos los compis. El escáner no es perfecto y va a cometer errores. Eliminad también las casillas que no contengan compis, y recomiendo también eliminar los compis sin rol EX disponible (imagen oscura).
         </div>
         <div class="catalog-actions">
           <button id="recognize-button" type="button" disabled>Analizar tarjetas y rellenar propuestas</button>

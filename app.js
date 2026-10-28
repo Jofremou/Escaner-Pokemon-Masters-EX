@@ -1110,7 +1110,7 @@ function detectMoveTypes(image, templates) {
     let best = null;
     sizeFractions.forEach((fraction) => {
       const size = Math.max(8, Math.round(canvas.width * fraction));
-      for (let centerY = slot.y - 0.035; centerY <= slot.y + 0.035; centerY += 0.01) {
+      for (let centerY = slot.y - 0.1; centerY <= slot.y + 0.1; centerY += 0.01) {
         for (let centerX = slot.x - 0.045; centerX <= slot.x + 0.045; centerX += 0.01) {
           const x = Math.round(canvas.width * centerX - size / 2);
           const y = Math.round(canvas.height * centerY - size / 2);
@@ -1165,7 +1165,7 @@ function detectPairRole(image, templates) {
     let bestDistance = Infinity;
     sizeFractions.forEach((fraction) => {
       const size = Math.max(8, Math.round(canvas.width * fraction));
-      for (let centerY = slot.y - 0.09; centerY <= slot.y + 0.09; centerY += 0.01) {
+      for (let centerY = slot.y - 0.2; centerY <= slot.y + 0.2; centerY += 0.01) {
         for (let centerX = slot.x - 0.15; centerX <= slot.x + 0.15; centerX += 0.01) {
           const x = Math.round(canvas.width * centerX - size / 2);
           const y = Math.round(canvas.height * centerY - size / 2);
@@ -1616,7 +1616,7 @@ async function detectExcelsiorBadge(image, templates, level, ocrReadingCount = 0
     let combinedDistance = Infinity;
     for (const sizeFraction of [0.16, 0.18, 0.2, 0.22, 0.24]) {
       const size = Math.max(8, Math.round(canvas.width * sizeFraction));
-      for (let centerY = 0.76; centerY <= 0.88; centerY += 0.01) {
+      for (let centerY = 0.3; centerY <= 1.2; centerY += 0.01) {
         for (let centerX = 0.11; centerX <= 0.19; centerX += 0.01) {
           const x = Math.round(canvas.width * centerX - size / 2);
           const y = Math.round(canvas.height * centerY - size / 2);
@@ -1806,8 +1806,8 @@ async function recognizeCopies(worker, image, templates) {
 
 async function recognizeMax(worker, image) {
   const regions = [
-    { x: 0.05, y: 0.82, width: 0.9, height: 0.16 },
-    { x: 0, y: 0.78, width: 0.95, height: 0.22 },
+    { x: 0, y: 0.66, width: 1, height: 0.32 },
+    { x: 0, y: 0.56, width: 1, height: 0.44 },
   ];
   for (const region of regions) {
     const crop = makeOCRCrop(image, region, 5);
@@ -1818,7 +1818,7 @@ async function recognizeMax(worker, image) {
       });
       const { data } = await worker.recognize(crop);
       const text = data.text.replace(/[^MAX]/gi, "").toUpperCase();
-      if (text === "MAX") return true;
+      if (/[MAX]/.test(text)) return true;
     }
   }
   return false;
@@ -2230,15 +2230,95 @@ function actualizarEstadoBotonSync() {
   button.disabled = !complete || !select.value;
 }
 
-async function esperarResultadoSync(requestId, timeoutMs = 60000) {
+/**
+ * Genera un registro independiente por sincronización.
+ * Se muestra en consola y se descarga como archivo .log al terminar.
+ * El token de acceso nunca se incluye en el registro.
+ */
+function crearRegistroSync(player, requestId) {
+  const inicio = new Date();
+  const entradas = [];
+  const fechaArchivo = [
+    inicio.getFullYear(),
+    String(inicio.getMonth() + 1).padStart(2, "0"),
+    String(inicio.getDate()).padStart(2, "0")
+  ].join("-") + "_" + [
+    String(inicio.getHours()).padStart(2, "0"),
+    String(inicio.getMinutes()).padStart(2, "0"),
+    String(inicio.getSeconds()).padStart(2, "0")
+  ].join("-");
+
+  const nombreSeguro = String(player)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60) || "jugador";
+
+  const nombreArchivo = `sync_${nombreSeguro}_${fechaArchivo}.log`;
+
+  function escribir(nivel, mensaje, detalles) {
+    const fecha = new Date().toISOString();
+    let linea = `[${fecha}] [${nivel}] [${requestId}] ${mensaje}`;
+
+    if (detalles !== undefined) {
+      linea += "\n" + JSON.stringify(detalles, null, 2);
+    }
+
+    entradas.push(linea);
+    const metodo = nivel === "ERROR" ? "error" : nivel === "WARN" ? "warn" : "info";
+    console[metodo](`[SYNC SHEETS][${requestId}] ${mensaje}`, detalles ?? "");
+  }
+
+  function descargar() {
+    // Descargar una sola vez, cuando ya consten éxito, error y finalización.
+    const contenido = entradas.join("\n\n") + "\n";
+    const blob = new Blob([contenido], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    document.body.append(enlace);
+    try {
+      enlace.click();
+    } finally {
+      enlace.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  }
+
+  return {
+    nombreArchivo,
+    info: (mensaje, detalles) => escribir("INFO", mensaje, detalles),
+    warn: (mensaje, detalles) => escribir("WARN", mensaje, detalles),
+    error: (mensaje, detalles) => escribir("ERROR", mensaje, detalles),
+    descargar
+  };
+}
+
+async function esperarResultadoSync(requestId, timeoutMs = 60000, registro = null) {
   const deadline = Date.now() + timeoutMs;
+  let intento = 0;
+  let ultimoEstado = null;
 
   while (Date.now() < deadline) {
+    intento += 1;
+
     const response = await scannerJsonp({
       action: "status",
       token: SHEETS_SYNC_TOKEN,
       requestId
     });
+
+    // Se registran los cambios de estado, sin repetir continuamente "pending".
+    const estadoActual = response.success ? response.state : "error_consulta";
+    if (estadoActual !== ultimoEstado) {
+      registro?.info(`Estado de Apps Script (consulta ${intento})`, {
+        estado: estadoActual,
+        error: response.error || null
+      });
+      ultimoEstado = estadoActual;
+    }
 
     if (!response.success) {
       throw new Error(response.error || "No se pudo consultar el resultado.");
@@ -2253,11 +2333,11 @@ async function esperarResultadoSync(requestId, timeoutMs = 60000) {
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
 
+  registro?.error(`Tiempo de espera agotado tras ${intento} consultas de estado.`);
   throw new Error(
     "No se ha recibido confirmación a tiempo. Comprueba Google Sheets antes de volver a sincronizar."
   );
 }
-
 
 
 async function sincronizarEscanerConSheets() {
@@ -2266,12 +2346,14 @@ async function sincronizarEscanerConSheets() {
   const status = document.getElementById("sync-status");
 
   if (!cards.length || !cards.every(isCardComplete)) {
+    console.warn("[SYNC SHEETS] Sincronización cancelada: hay tarjetas incompletas.");
     status.textContent = "Revisa todas las tarjetas antes de sincronizar.";
     return;
   }
 
   const player = select.value;
   if (!player) {
+    console.warn("[SYNC SHEETS] Sincronización cancelada: no se ha seleccionado jugador.");
     status.textContent = "Selecciona un jugador.";
     return;
   }
@@ -2313,10 +2395,25 @@ async function sincronizarEscanerConSheets() {
     pairs
   };
 
+  const registro = crearRegistroSync(player, requestId);
+  registro.info("INICIO DE SINCRONIZACIÓN", {
+    fechaLocal: new Date().toLocaleString(),
+    jugador: player,
+    totalParejas: pairs.length,
+    archivo: registro.nombreArchivo
+  });
+
+  pairs.forEach((pair, index) => {
+    registro.info(`Pareja ${index + 1}/${pairs.length} (tarjeta ${cards[index].cropIndex + 1})`, pair);
+  });
+
   button.disabled = true;
   status.textContent = "Enviando datos a Google Sheets...";
 
+  let etapa = "envío de la petición POST";
+
   try {
+    registro.info("Enviando petición POST a Google Sheets (modo no-cors).");
     await fetch(SHEETS_WEB_APP_URL, {
       method: "POST",
       mode: "no-cors",
@@ -2326,9 +2423,20 @@ async function sincronizarEscanerConSheets() {
       body: JSON.stringify(payload)
     });
 
+    // no-cors no permite saber si Apps Script procesó la solicitud.
+    registro.info("Petición fetch completada; recepción por Apps Script todavía sin confirmar.");
     status.textContent = "Solicitud enviada. Esperando confirmación...";
 
-    const result = await esperarResultadoSync(requestId);
+    etapa = "consulta del estado de sincronización";
+    const result = await esperarResultadoSync(requestId, 60000, registro);
+
+    registro.info("SINCRONIZACIÓN CONFIRMADA", {
+      jugador: player,
+      totalEnviadas: pairs.length,
+      nuevas: result.added,
+      actualizadas: result.updated,
+      sinCambios: result.unchanged
+    });
 
     status.textContent =
       `Sincronización completada para ${player}. ` +
@@ -2336,9 +2444,23 @@ async function sincronizarEscanerConSheets() {
       `sin cambios: ${result.unchanged}.`;
 
   } catch (error) {
+    registro.error(`ERROR durante: ${etapa}`, {
+      jugador: player,
+      totalEnviadas: pairs.length,
+      mensaje: error.message,
+      tipo: error.name || "Error",
+      stack: error.stack || null
+    });
     status.textContent =
       "No se ha podido confirmar la sincronización: " + error.message;
   } finally {
+    registro.info("FIN DE SINCRONIZACIÓN");
+    try {
+      registro.descargar();
+      console.info(`[SYNC SHEETS][${requestId}] Log descargado: ${registro.nombreArchivo}`);
+    } catch (errorDescarga) {
+      console.error(`[SYNC SHEETS][${requestId}] No se pudo generar el archivo .log:`, errorDescarga);
+    }
     actualizarEstadoBotonSync();
   }
 }
@@ -2625,6 +2747,8 @@ function autoDetectGridY(
 
   // Solo cambia Y. Se conservan X, ancho, alto, filas y columnas.
   grid.y = detectedYPercent;
+
+  result.y = result.y - 1.2 // ajuste final
 
   return {
     yPixels: result.y,
